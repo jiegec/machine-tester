@@ -46,13 +46,13 @@ int main(int argc, char *argv[])
 
     // buffer
     const int N = 1024;
-    const int M = 65536;
+    const int M = 262144;
     char send_buffer[M] = {0};
     char recv_buffer[M] = {0};
 
     // latency test
-    const int loop_times = 4096;
-    const int skip_times = 1024;
+    const int loop_times = 1024;
+    const int skip_times = 256;
 
     double *latency = nullptr;
     if (my_id == 0)
@@ -122,11 +122,11 @@ int main(int argc, char *argv[])
     }
 
     // stats
+    int count = num_procs * (num_procs - 1) / 2;
     if (my_id == 0)
     {
         // calculate mean
         double sum = 0.0;
-        int count = num_procs * (num_procs - 1) / 2;
         for (auto [from, to] : comms)
         {
             double data = latency[from * num_procs + to];
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
         }
 
         variance = sqrt(variance / count);
-        printf("Latency mean %.2fus, var %.2f us\n", mean, variance);
+        printf("Latency mean %.2fus, var %.2fus\n", mean, variance);
 
         // find anomaly
         for (auto [from, to] : comms)
@@ -215,11 +215,47 @@ int main(int argc, char *argv[])
         MPI_Reduce(&elapsed, &actual_elapsed, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
         if (my_id == 0)
         {
-            double mb = (double)M * batch_size * loop_times / actual_elapsed / 1000 / 1000 / 1000 * 8;
-            printf("%d <-> %d: %.2fGbps/s\n", from, to, mb);
-            bandwidth[from * num_procs + to] = mb;
+            double gb = (double)M * batch_size * loop_times / actual_elapsed / 1000 / 1000 / 1000 * 8;
+            printf("%d <-> %d: %.2fGbps\n", from, to, gb);
+            bandwidth[from * num_procs + to] = gb;
             fflush(stdout);
         }
+    }
+
+    // stats
+    if (my_id == 0)
+    {
+        // calculate mean
+        double sum = 0.0;
+        for (auto [from, to] : comms)
+        {
+            double data = bandwidth[from * num_procs + to];
+            sum += data;
+        }
+
+        double mean = sum / count;
+
+        // calculate variance
+        double variance = 0.0;
+        for (auto [from, to] : comms)
+        {
+            double data = bandwidth[from * num_procs + to];
+            variance += (data - mean) * (data - mean);
+        }
+
+        variance = sqrt(variance / count);
+        printf("Bandwidth mean %.2fGbps, var %.2fGbps\n", mean, variance);
+
+        // find anomaly
+        for (auto [from, to] : comms)
+        {
+            double data = bandwidth[from * num_procs + to];
+            if (abs(data - mean) > 3 * variance)
+            {
+                printf("Found anomaly: %d <-> %d %.2fGbps\n", from, to, data);
+            }
+        }
+        fflush(stdout);
     }
 
     if (my_id == 0)
