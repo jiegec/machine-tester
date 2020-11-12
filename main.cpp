@@ -157,5 +157,7 @@ int main(int argc, char *argv[])
         free(all_hostnames);
         free(latency);
     }
+
+    MPI_Finalize();
     return 0;
 }
