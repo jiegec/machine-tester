@@ -18,6 +18,15 @@ int main(int argc, char *argv[])
     if (my_id == 0)
     {
         printf("Running with %d processes\n", num_procs);
+
+        int version = 0, subversion = 0;
+        MPI_Get_version(&version, &subversion);
+
+        char buffer[MPI_MAX_LIBRARY_VERSION_STRING] = {0};
+        int len = 0;
+        MPI_Get_library_version(buffer, &len);
+
+        printf("Using MPI %d.%d library %s\n", version, subversion, buffer);
     }
 
     // get hostname
