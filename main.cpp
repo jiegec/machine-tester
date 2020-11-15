@@ -69,6 +69,12 @@ int main(int argc, char *argv[])
         latency = (double *)malloc(sizeof(double) * num_procs * num_procs);
         assert(latency != nullptr);
     }
+    double *latency_buffer = nullptr;
+    if (my_id == 0)
+    {
+        latency_buffer = (double *)malloc(sizeof(double) * num_procs);
+        assert(latency_buffer != nullptr);
+    }
 
     std::vector<std::tuple<int, int>> comms;
     for (int from = 0; from < num_procs; from++)
@@ -83,50 +89,58 @@ int main(int argc, char *argv[])
         }
     }
 
-    for (auto [from, to] : comms)
+    for (int sum = 1; sum <= num_procs + num_procs - 1; sum++)
     {
         double elapsed = 0.0;
         MPI_Status status;
         MPI_Barrier(MPI_COMM_WORLD);
         double time_start = 0.0;
 
-        if (my_id == from)
+        int from = my_id;
+        int to = sum - from;
+        if (0 <= to && to < num_procs && from != to)
         {
-            for (int i = 0; i < loop_times + skip_times; i++)
+            if (my_id == from)
             {
-                if (i == skip_times)
+                for (int i = 0; i < loop_times + skip_times; i++)
                 {
-                    time_start = MPI_Wtime();
+                    if (i == skip_times)
+                    {
+                        time_start = MPI_Wtime();
+                    }
+                    // 2 rtt
+                    MPI_Send(send_buffer, N, MPI_CHAR, to, 0, MPI_COMM_WORLD);
+                    MPI_Recv(recv_buffer, N, MPI_CHAR, to, 0, MPI_COMM_WORLD, &status);
                 }
-                // 2 rtt
-                MPI_Send(send_buffer, N, MPI_CHAR, to, 0, MPI_COMM_WORLD);
-                MPI_Recv(recv_buffer, N, MPI_CHAR, to, 0, MPI_COMM_WORLD, &status);
             }
-        }
-        else if (my_id == to)
-        {
-            for (int i = 0; i < loop_times + skip_times; i++)
+            else if (my_id == to)
             {
-                MPI_Recv(recv_buffer, N, MPI_CHAR, from, 0, MPI_COMM_WORLD, &status);
-                MPI_Send(send_buffer, N, MPI_CHAR, from, 0, MPI_COMM_WORLD);
+                for (int i = 0; i < loop_times + skip_times; i++)
+                {
+                    MPI_Recv(recv_buffer, N, MPI_CHAR, from, 0, MPI_COMM_WORLD, &status);
+                    MPI_Send(send_buffer, N, MPI_CHAR, from, 0, MPI_COMM_WORLD);
+                }
             }
         }
 
         double time_end = MPI_Wtime();
         MPI_Barrier(MPI_COMM_WORLD);
-        if (my_id == from)
-        {
-            elapsed = time_end - time_start;
-        }
+        elapsed = time_end - time_start;
+        MPI_Gather(&elapsed, 1, MPI_DOUBLE, latency_buffer, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-        double actual_elapsed = 0.0;
-        MPI_Reduce(&elapsed, &actual_elapsed, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
         if (my_id == 0)
         {
-            double us = actual_elapsed * 1000 * 1000 / 2 / loop_times;
-            printf("%d <-> %d: %.2fus\n", from, to, us);
-            latency[from * num_procs + to] = us;
-            fflush(stdout);
+            for (int i = 0; i < num_procs;i++) {
+                double actual_elapsed = latency_buffer[i];
+                double us = actual_elapsed * 1000 * 1000 / 2 / loop_times;
+                int from = i;
+                int to = sum - i;
+                if (from < to && 0 <= to && to < num_procs) {
+                    printf("%d <-> %d: %.2fus\n", from, to, us);
+                    latency[from * num_procs + to] = us;
+                    fflush(stdout);
+                }
+            }
         }
     }
 
@@ -271,6 +285,7 @@ int main(int argc, char *argv[])
     {
         free(all_hostnames);
         free(latency);
+        free(latency_buffer);
         free(bandwidth);
     }
 
