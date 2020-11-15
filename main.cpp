@@ -193,24 +193,8 @@ int main(int argc, char *argv[])
     if (my_id == 0)
     {
         // calculate mean
-        double sum = 0.0;
-        for (auto [from, to] : comms)
-        {
-            double data = bandwidth[from * num_procs + to];
-            sum += data;
-        }
-
-        double mean = sum / count;
-
-        // calculate variance
-        double variance = 0.0;
-        for (auto [from, to] : comms)
-        {
-            double data = bandwidth[from * num_procs + to];
-            variance += (data - mean) * (data - mean);
-        }
-
-        variance = sqrt(variance / count);
+        double mean, variance;
+        stats(num_procs, bandwidth, &mean, &variance);
         printf("Bandwidth mean %.2fGbps, var %.2fGbps\n", mean, variance);
 
         // find anomaly
