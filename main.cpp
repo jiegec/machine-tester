@@ -73,33 +73,7 @@ int main(int argc, char *argv[])
     }
 
 
-    double *latency = nullptr;
-    if (my_id == 0)
-    {
-        latency = (double *)malloc(sizeof(double) * num_procs * num_procs);
-        assert(latency != nullptr);
-    }
-    latency_test(num_procs, my_id, latency);
-
-    // stats
-    int count = num_procs * (num_procs - 1) / 2;
-    if (my_id == 0)
-    {
-        double mean, variance;
-        stats(num_procs, latency, &mean, &variance);
-        printf("Latency mean %.2fus, var %.2fus\n", mean, variance);
-
-        // find anomaly
-        for (auto [from, to] : comms)
-        {
-            double data = latency[from * num_procs + to];
-            if (abs(data - mean) > 3 * variance)
-            {
-                printf("Found anomaly: %d <-> %d %.2fus\n", from, to, data);
-            }
-        }
-        fflush(stdout);
-    }
+    latency_test(num_procs, my_id, comms);
 
     // bandwidth test
     double *bandwidth = nullptr;
@@ -136,7 +110,6 @@ int main(int argc, char *argv[])
     if (my_id == 0)
     {
         free(all_hostnames);
-        free(latency);
         free(bandwidth);
     }
 

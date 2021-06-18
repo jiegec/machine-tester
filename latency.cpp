@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <vector>
+#include <tuple>
+
+#include "stats.h"
 
 // buffer
 const int N = 1024;
@@ -11,9 +15,15 @@ const int M = 262144;
 const int loop_times = 1024;
 const int skip_times = 256;
 
-// latency should have num_procs * num_procs elements
-void latency_test(int num_procs, int my_id, double *latency)
+void latency_test(int num_procs, int my_id, const std::vector<std::tuple<int, int>> &comms)
 {
+    double *latency = nullptr;
+    if (my_id == 0)
+    {
+        latency = (double *)malloc(sizeof(double) * num_procs * num_procs);
+        assert(latency != nullptr);
+    }
+
     static char send_buffer[M] = {0};
     static char recv_buffer[M] = {0};
 
@@ -81,9 +91,31 @@ void latency_test(int num_procs, int my_id, double *latency)
         }
     }
 
+    // stats
+    int count = num_procs * (num_procs - 1) / 2;
+    if (my_id == 0)
+    {
+        double mean, variance;
+        stats(num_procs, latency, &mean, &variance);
+        printf("Latency mean %.2fus, var %.2fus\n", mean, variance);
+
+        // find anomaly
+        for (auto [from, to] : comms)
+        {
+            double data = latency[from * num_procs + to];
+            if (abs(data - mean) > 3 * variance)
+            {
+                printf("Found anomaly: %d <-> %d %.2fus\n", from, to, data);
+            }
+        }
+        fflush(stdout);
+    }
+
     if (my_id == 0)
     {
         free(latency_buffer);
+        free(latency);
     }
+
     return;
 }

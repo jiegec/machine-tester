@@ -13,8 +13,8 @@ const int skip_times = 256;
 
 void alltoall_test(int num_procs, int my_id)
 {
-    char *send_buffer = (char*)malloc(sizeof(char) * M * num_procs);
-    char *recv_buffer = (char*)malloc(sizeof(char) * M * num_procs);
+    char *send_buffer = (char *)malloc(sizeof(char) * M * num_procs);
+    char *recv_buffer = (char *)malloc(sizeof(char) * M * num_procs);
 
     double elapsed = 0.0;
     MPI_Barrier(MPI_COMM_WORLD);
