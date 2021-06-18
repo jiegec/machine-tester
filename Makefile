@@ -5,7 +5,7 @@ CXXFLAGS := --std=c++17 -O3
 
 all: machine_tester
 
-machine_tester: main.o latency.o stats.o bandwidth.o
+machine_tester: main.o latency.o stats.o bandwidth.o alltoall.o
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 %.o: %.cpp

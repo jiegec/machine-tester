@@ -10,6 +10,7 @@
 
 #include "latency.h"
 #include "bandwidth.h"
+#include "alltoall.h"
 #include "stats.h"
 
 int main(int argc, char *argv[])
@@ -129,6 +130,8 @@ int main(int argc, char *argv[])
         }
         fflush(stdout);
     }
+
+    alltoall_test(num_procs, my_id);
 
     if (my_id == 0)
     {
