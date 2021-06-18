@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <vector>
+#include <tuple>
+
+#include "stats.h"
 
 // buffer
 const int N = 1024;
@@ -12,9 +16,15 @@ const int loop_times = 1024;
 const int skip_times = 256;
 const int batch_size = 64;
 
-// bandwidth should have num_procs * num_procs elements
-void bandwidth_test(int num_procs, int my_id, double *bandwidth)
+void bandwidth_test(int num_procs, int my_id, const std::vector<std::tuple<int, int>> &comms)
 {
+    double *bandwidth = nullptr;
+    if (my_id == 0)
+    {
+        bandwidth = (double *)malloc(sizeof(double) * num_procs * num_procs);
+        assert(bandwidth != nullptr);
+    }
+
     static char send_buffer[M] = {0};
     static char recv_buffer[M] = {0};
 
@@ -91,9 +101,30 @@ void bandwidth_test(int num_procs, int my_id, double *bandwidth)
         }
     }
 
+    // stats
+    if (my_id == 0)
+    {
+        // calculate mean
+        double mean, variance;
+        stats(num_procs, bandwidth, &mean, &variance);
+        printf("Bandwidth mean %.2fGbps, var %.2fGbps\n", mean, variance);
+
+        // find anomaly
+        for (auto [from, to] : comms)
+        {
+            double data = bandwidth[from * num_procs + to];
+            if (abs(data - mean) > 3 * variance)
+            {
+                printf("Found anomaly: %d <-> %d %.2fGbps\n", from, to, data);
+            }
+        }
+        fflush(stdout);
+    }
+
     if (my_id == 0)
     {
         free(bandwidth_buffer);
+        free(bandwidth);
     }
     return;
 }

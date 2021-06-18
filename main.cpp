@@ -74,43 +74,12 @@ int main(int argc, char *argv[])
 
 
     latency_test(num_procs, my_id, comms);
-
-    // bandwidth test
-    double *bandwidth = nullptr;
-    if (my_id == 0)
-    {
-        bandwidth = (double *)malloc(sizeof(double) * num_procs * num_procs);
-        assert(bandwidth != nullptr);
-    }
-
-    bandwidth_test(num_procs, my_id, bandwidth);
-
-    // stats
-    if (my_id == 0)
-    {
-        // calculate mean
-        double mean, variance;
-        stats(num_procs, bandwidth, &mean, &variance);
-        printf("Bandwidth mean %.2fGbps, var %.2fGbps\n", mean, variance);
-
-        // find anomaly
-        for (auto [from, to] : comms)
-        {
-            double data = bandwidth[from * num_procs + to];
-            if (abs(data - mean) > 3 * variance)
-            {
-                printf("Found anomaly: %d <-> %d %.2fGbps\n", from, to, data);
-            }
-        }
-        fflush(stdout);
-    }
-
+    bandwidth_test(num_procs, my_id, comms);
     alltoall_test(num_procs, my_id);
 
     if (my_id == 0)
     {
         free(all_hostnames);
-        free(bandwidth);
     }
 
     MPI_Finalize();
