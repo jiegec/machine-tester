@@ -9,6 +9,7 @@
 #include <tuple>
 
 #include "latency.h"
+#include "bandwidth.h"
 #include "stats.h"
 
 int main(int argc, char *argv[])
@@ -56,22 +57,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    // buffer
-    const int N = 1024;
-    const int M = 262144;
-    char send_buffer[M] = {0};
-    char recv_buffer[M] = {0};
-
-    // latency test
-    const int loop_times = 1024;
-    const int skip_times = 256;
-
-    double *latency = nullptr;
-    if (my_id == 0)
-    {
-        latency = (double *)malloc(sizeof(double) * num_procs * num_procs);
-        assert(latency != nullptr);
-    }
+    // pairs of communications
     std::vector<std::tuple<int, int>> comms;
     for (int from = 0; from < num_procs; from++)
     {
@@ -85,6 +71,13 @@ int main(int argc, char *argv[])
         }
     }
 
+
+    double *latency = nullptr;
+    if (my_id == 0)
+    {
+        latency = (double *)malloc(sizeof(double) * num_procs * num_procs);
+        assert(latency != nullptr);
+    }
     latency_test(num_procs, my_id, latency);
 
     // stats
@@ -109,85 +102,13 @@ int main(int argc, char *argv[])
 
     // bandwidth test
     double *bandwidth = nullptr;
-    const int batch_size = 64;
-    MPI_Request request[batch_size];
-    MPI_Status status[batch_size];
     if (my_id == 0)
     {
         bandwidth = (double *)malloc(sizeof(double) * num_procs * num_procs);
         assert(bandwidth != nullptr);
     }
 
-    double *bandwidth_buffer = nullptr;
-    if (my_id == 0)
-    {
-        bandwidth_buffer = (double *)malloc(sizeof(double) * num_procs);
-        assert(bandwidth_buffer != nullptr);
-    }
-
-    for (int sum = 1; sum <= num_procs + num_procs - 3; sum++)
-    {
-        double elapsed = 0.0;
-        MPI_Barrier(MPI_COMM_WORLD);
-        double time_start = 0.0;
-
-        int from = my_id;
-        int to = sum - from;
-        if (0 <= to && to < num_procs && from != to)
-        {
-            if (from < to)
-            {
-                for (int i = 0; i < loop_times + skip_times; i++)
-                {
-                    if (i == skip_times)
-                    {
-                        time_start = MPI_Wtime();
-                    }
-
-                    for (int j = 0; j < batch_size; j++)
-                    {
-                        MPI_Isend(send_buffer, M, MPI_CHAR, to, 0, MPI_COMM_WORLD, &request[j]);
-                    }
-                    MPI_Waitall(batch_size, request, status);
-                    MPI_Recv(recv_buffer, 1, MPI_CHAR, to, 1, MPI_COMM_WORLD, &status[0]);
-                }
-            }
-            else
-            {
-                for (int i = 0; i < loop_times + skip_times; i++)
-                {
-                    for (int j = 0; j < batch_size; j++)
-                    {
-                        MPI_Irecv(recv_buffer, M, MPI_CHAR, to, 0, MPI_COMM_WORLD, &request[j]);
-                    }
-                    MPI_Waitall(batch_size, request, status);
-                    MPI_Send(send_buffer, 1, MPI_CHAR, to, 1, MPI_COMM_WORLD);
-                }
-            }
-        }
-
-        double time_end = MPI_Wtime();
-        MPI_Barrier(MPI_COMM_WORLD);
-        elapsed = time_end - time_start;
-
-        MPI_Gather(&elapsed, 1, MPI_DOUBLE, bandwidth_buffer, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        if (my_id == 0)
-        {
-            for (int i = 0; i < num_procs; i++)
-            {
-                double actual_elapsed = bandwidth_buffer[i];
-                int from = i;
-                int to = sum - i;
-                if (from < to && 0 <= to && to < num_procs)
-                {
-                    double gb = (double)M * batch_size * loop_times / actual_elapsed / 1000 / 1000 / 1000 * 8;
-                    printf("%d <-> %d: %.2fGbps\n", from, to, gb);
-                    bandwidth[from * num_procs + to] = gb;
-                    fflush(stdout);
-                }
-            }
-        }
-    }
+    bandwidth_test(num_procs, my_id, bandwidth);
 
     // stats
     if (my_id == 0)
@@ -214,7 +135,6 @@ int main(int argc, char *argv[])
         free(all_hostnames);
         free(latency);
         free(bandwidth);
-        free(bandwidth_buffer);
     }
 
     MPI_Finalize();

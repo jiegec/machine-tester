@@ -7,27 +7,29 @@
 const int N = 1024;
 const int M = 262144;
 
-// latency test
+// bandwidth test
 const int loop_times = 1024;
 const int skip_times = 256;
+const int batch_size = 64;
 
-// latency should have num_procs * num_procs elements
-void latency_test(int num_procs, int my_id, double *latency)
+// bandwidth should have num_procs * num_procs elements
+void bandwidth_test(int num_procs, int my_id, double *bandwidth)
 {
     static char send_buffer[M] = {0};
     static char recv_buffer[M] = {0};
 
-    double *latency_buffer = nullptr;
+    double *bandwidth_buffer = nullptr;
+    MPI_Request request[batch_size];
+    MPI_Status status[batch_size];
     if (my_id == 0)
     {
-        latency_buffer = (double *)malloc(sizeof(double) * num_procs);
-        assert(latency_buffer != nullptr);
+        bandwidth_buffer = (double *)malloc(sizeof(double) * num_procs);
+        assert(bandwidth_buffer != nullptr);
     }
 
     for (int sum = 1; sum <= num_procs + num_procs - 3; sum++)
     {
         double elapsed = 0.0;
-        MPI_Status status;
         MPI_Barrier(MPI_COMM_WORLD);
         double time_start = 0.0;
 
@@ -43,17 +45,25 @@ void latency_test(int num_procs, int my_id, double *latency)
                     {
                         time_start = MPI_Wtime();
                     }
-                    // 2 rtt
-                    MPI_Send(send_buffer, N, MPI_CHAR, to, 0, MPI_COMM_WORLD);
-                    MPI_Recv(recv_buffer, N, MPI_CHAR, to, 0, MPI_COMM_WORLD, &status);
+
+                    for (int j = 0; j < batch_size; j++)
+                    {
+                        MPI_Isend(send_buffer, M, MPI_CHAR, to, 0, MPI_COMM_WORLD, &request[j]);
+                    }
+                    MPI_Waitall(batch_size, request, status);
+                    MPI_Recv(recv_buffer, 1, MPI_CHAR, to, 1, MPI_COMM_WORLD, &status[0]);
                 }
             }
             else
             {
                 for (int i = 0; i < loop_times + skip_times; i++)
                 {
-                    MPI_Recv(recv_buffer, N, MPI_CHAR, to, 0, MPI_COMM_WORLD, &status);
-                    MPI_Send(send_buffer, N, MPI_CHAR, to, 0, MPI_COMM_WORLD);
+                    for (int j = 0; j < batch_size; j++)
+                    {
+                        MPI_Irecv(recv_buffer, M, MPI_CHAR, to, 0, MPI_COMM_WORLD, &request[j]);
+                    }
+                    MPI_Waitall(batch_size, request, status);
+                    MPI_Send(send_buffer, 1, MPI_CHAR, to, 1, MPI_COMM_WORLD);
                 }
             }
         }
@@ -61,20 +71,20 @@ void latency_test(int num_procs, int my_id, double *latency)
         double time_end = MPI_Wtime();
         MPI_Barrier(MPI_COMM_WORLD);
         elapsed = time_end - time_start;
-        MPI_Gather(&elapsed, 1, MPI_DOUBLE, latency_buffer, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
+        MPI_Gather(&elapsed, 1, MPI_DOUBLE, bandwidth_buffer, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         if (my_id == 0)
         {
             for (int i = 0; i < num_procs; i++)
             {
-                double actual_elapsed = latency_buffer[i];
+                double actual_elapsed = bandwidth_buffer[i];
                 int from = i;
                 int to = sum - i;
                 if (from < to && 0 <= to && to < num_procs)
                 {
-                    double us = actual_elapsed * 1000 * 1000 / 2 / loop_times;
-                    printf("%d <-> %d: %.2fus\n", from, to, us);
-                    latency[from * num_procs + to] = us;
+                    double gb = (double)M * batch_size * loop_times / actual_elapsed / 1000 / 1000 / 1000 * 8;
+                    printf("%d <-> %d: %.2fGbps\n", from, to, gb);
+                    bandwidth[from * num_procs + to] = gb;
                     fflush(stdout);
                 }
             }
@@ -83,7 +93,7 @@ void latency_test(int num_procs, int my_id, double *latency)
 
     if (my_id == 0)
     {
-        free(latency_buffer);
+        free(bandwidth_buffer);
     }
     return;
 }
