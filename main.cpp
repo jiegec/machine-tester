@@ -7,10 +7,12 @@
 #include <math.h>
 #include <vector>
 #include <tuple>
+#include <string.h>
 
 #include "latency.h"
 #include "bandwidth.h"
 #include "alltoall.h"
+#include "alltoallv.h"
 #include "stats.h"
 
 int main(int argc, char *argv[])
@@ -72,10 +74,25 @@ int main(int argc, char *argv[])
         }
     }
 
-
-    latency_test(num_procs, my_id, comms);
-    bandwidth_test(num_procs, my_id, comms);
-    alltoall_test(num_procs, my_id);
+    for (int i = 1; i < argc; i++)
+    {
+        if (strcmp(argv[i], "latency") == 0)
+        {
+            latency_test(num_procs, my_id, comms);
+        }
+        else if (strcmp(argv[i], "bandwidth") == 0)
+        {
+            bandwidth_test(num_procs, my_id, comms);
+        }
+        else if (strcmp(argv[i], "alltoall") == 0)
+        {
+            alltoall_test(num_procs, my_id);
+        }
+        else if (strcmp(argv[i], "alltoallv") == 0)
+        {
+            alltoallv_test(num_procs, my_id);
+        }
+    }
 
     if (my_id == 0)
     {

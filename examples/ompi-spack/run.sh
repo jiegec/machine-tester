@@ -18,4 +18,4 @@ source /opt/spack/share/spack/setup-env.sh
 spack load openmpi@3.1.6 ~cuda
 
 set -x
-$(which mpirun) -n $NODES -host $HOSTS $ROOT/machine_tester
+$(which mpirun) -n $NODES -host $HOSTS $ROOT/machine_tester latency bandwidth alltoall alltoallv
