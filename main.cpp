@@ -13,6 +13,7 @@
 #include "bandwidth.h"
 #include "alltoall.h"
 #include "alltoallv.h"
+#include "cpu.h"
 #include "stats.h"
 
 int main(int argc, char *argv[])
@@ -91,6 +92,10 @@ int main(int argc, char *argv[])
         else if (strcmp(argv[i], "alltoallv") == 0)
         {
             alltoallv_test(num_procs, my_id);
+        }
+        else if (strcmp(argv[i], "cpu") == 0)
+        {
+            cpu_test(num_procs, my_id);
         }
     }
 
