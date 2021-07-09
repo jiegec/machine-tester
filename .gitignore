@@ -1,3 +1,6 @@
 *.o
+*.log
+*.png
 machine_tester
+memory_latency
 .vscode/
