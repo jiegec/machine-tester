@@ -15,6 +15,7 @@
 #include "alltoallv.h"
 #include "cpu.h"
 #include "stats.h"
+#include "mpi-ext.h"
 
 int main(int argc, char *argv[])
 {
@@ -35,6 +36,21 @@ int main(int argc, char *argv[])
         MPI_Get_library_version(buffer, &len);
 
         printf("Using MPI %d.%d library %s\n", version, subversion, buffer);
+
+// https://www.open-mpi.org/faq/?category=runcuda
+#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+        printf("MPI is CUDA-aware in compile time\n");
+#elif defined(MPIX_CUDA_AWARE_SUPPORT) && !MPIX_CUDA_AWARE_SUPPORT
+        printf("MPI is NOT CUDA-aware in compile time\n");
+#endif
+
+#if defined(MPIX_CUDA_AWARE_SUPPORT)
+        if (1 == MPIX_Query_cuda_support()) {
+            printf("MPI is CUDA-aware in run time\n");
+        } else {
+            printf("MPI is NOT CUDA-aware in run time\n");
+        }
+#endif
     }
 
     // get hostname
