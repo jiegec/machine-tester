@@ -4,3 +4,4 @@
 machine_tester
 memory_latency
 .vscode/
+.config_*

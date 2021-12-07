@@ -7,45 +7,67 @@
 #endif
 
 #ifdef ENABLE_BLAS
+extern "C" void sgemm_(const char *, const char *, int *, int *, int *, float *,
+                       float *, int *, float *, int *, float *, float *, int *);
 extern "C" void dgemm_(const char *, const char *, int *, int *, int *,
                        double *, double *, int *, double *, int *, double *,
                        double *, int *);
-void gemm_test(int num_procs, int my_id) {
+
+template <class T>
+double gemm_test_generic(int num_procs, int my_id,
+                       void (*gemm)(const char *, const char *, int *, int *,
+                                    int *, T *, T *, int *, T *, int *, T *,
+                                    T *, int *)) {
   int n = 4096;
-  double gflops = 2 * (double)n * n * n / 1000000000;
-  double *a = new double[n * n];
-  double *b = new double[n * n];
-  double *c = new double[n * n];
-
-  double alpha = 1.0;
-  double beta = 1.0;
-
   int loop = 4;
-  if (my_id == 0) {
-    printf("Num Threads Per Process: %d\n", omp_get_max_threads());
-  }
-#ifdef ENABLE_MKL
-  mkl_set_num_threads(omp_get_max_threads());
-#endif
+  T gflops = 2 * (T)n * n * n / 1000000000;
+  T *a = new T[n * n];
+  T *b = new T[n * n];
+  T *c = new T[n * n];
+
+  T alpha = 1.0;
+  T beta = 1.0;
 
   // warmup
-  dgemm_("N", "N", &n, &n, &n, &alpha, a, &n, b, &n, &beta, c, &n);
+  gemm("N", "N", &n, &n, &n, &alpha, a, &n, b, &n, &beta, c, &n);
 
   MPI_Barrier(MPI_COMM_WORLD);
   double start = MPI_Wtime();
   for (int i = 0; i < loop; i++) {
-    dgemm_("N", "N", &n, &n, &n, &alpha, a, &n, b, &n, &beta, c, &n);
+    gemm("N", "N", &n, &n, &n, &alpha, a, &n, b, &n, &beta, c, &n);
   }
   MPI_Barrier(MPI_COMM_WORLD);
   double elapsed = MPI_Wtime() - start;
 
+  double perf = gflops * loop * num_procs / elapsed;
+
+  delete[] a;
+  delete[] b;
+  delete[] c;
+
+  return perf;
+}
+
+void gemm_test(int num_procs, int my_id) {
+  double perf;
   if (my_id == 0) {
-    printf("DGEMM Perf: %lf GF/s\n", gflops * loop * num_procs / elapsed);
+    printf("Num Threads Per Process: %d\n", omp_get_max_threads());
   }
 
-  delete [] a;
-  delete [] b;
-  delete [] c;
+#ifdef ENABLE_MKL
+  mkl_set_num_threads(omp_get_max_threads());
+#endif
+
+  perf = gemm_test_generic<float>(num_procs, my_id, sgemm_);
+  if (my_id == 0) {
+    printf("SGEMM Perf: %lf GF/s\n", perf);
+  }
+
+  perf = gemm_test_generic<double>(num_procs, my_id, dgemm_);
+  if (my_id == 0) {
+    printf("DGEMM Perf: %lf GF/s\n", perf);
+  }
+
   return;
 }
 
