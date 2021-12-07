@@ -2,6 +2,10 @@
 #include <mpi.h>
 #include <omp.h>
 
+#ifdef ENABLE_MKL
+#include <mkl.h>
+#endif
+
 #ifdef ENABLE_BLAS
 extern "C" void dgemm_(const char *, const char *, int *, int *, int *,
                        double *, double *, int *, double *, int *, double *,
@@ -20,6 +24,9 @@ void gemm_test(int num_procs, int my_id) {
   if (my_id == 0) {
     printf("Num Threads Per Process: %d\n", omp_get_max_threads());
   }
+#ifdef ENABLE_MKL
+  mkl_set_num_threads(omp_get_max_threads());
+#endif
 
   // warmup
   dgemm_("N", "N", &n, &n, &n, &alpha, a, &n, b, &n, &beta, c, &n);
@@ -35,6 +42,10 @@ void gemm_test(int num_procs, int my_id) {
   if (my_id == 0) {
     printf("DGEMM Perf: %lf GF/s\n", gflops * loop * num_procs / elapsed);
   }
+
+  delete [] a;
+  delete [] b;
+  delete [] c;
   return;
 }
 
