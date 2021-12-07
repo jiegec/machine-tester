@@ -15,11 +15,10 @@ extern "C" void dgemm_(const char *, const char *, int *, int *, int *,
 
 template <class T>
 double gemm_test_generic(int num_procs, int my_id,
-                       void (*gemm)(const char *, const char *, int *, int *,
-                                    int *, T *, T *, int *, T *, int *, T *,
-                                    T *, int *)) {
+                         void (*gemm)(const char *, const char *, int *, int *,
+                                      int *, T *, T *, int *, T *, int *, T *,
+                                      T *, int *)) {
   int n = 4096;
-  int loop = 4;
   T gflops = 2 * (T)n * n * n / 1000000000;
   T *a = new T[n * n];
   T *b = new T[n * n];
@@ -29,15 +28,24 @@ double gemm_test_generic(int num_procs, int my_id,
   T beta = 1.0;
 
   // warmup
-  gemm("N", "N", &n, &n, &n, &alpha, a, &n, b, &n, &beta, c, &n);
-
   MPI_Barrier(MPI_COMM_WORLD);
   double start = MPI_Wtime();
+  gemm("N", "N", &n, &n, &n, &alpha, a, &n, b, &n, &beta, c, &n);
+  MPI_Barrier(MPI_COMM_WORLD);
+  double elapsed = MPI_Wtime() - start;
+
+  // run for roughly 2s
+  int loop = 2 / elapsed;
+  // make loop equal to all procs
+  MPI_Bcast(&loop, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  start = MPI_Wtime();
   for (int i = 0; i < loop; i++) {
     gemm("N", "N", &n, &n, &n, &alpha, a, &n, b, &n, &beta, c, &n);
   }
   MPI_Barrier(MPI_COMM_WORLD);
-  double elapsed = MPI_Wtime() - start;
+  elapsed = MPI_Wtime() - start;
 
   double perf = gflops * loop * num_procs / elapsed;
 
