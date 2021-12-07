@@ -6,7 +6,10 @@ CXXFLAGS += -DENABLE_BLAS -DENABLE_OPENBLAS
 LDFLAGS := $(shell pkg-config --libs openblas)
 else ifeq ($(BLAS),mkl)
 CXXFLAGS += -DENABLE_BLAS -DENABLE_MKL
-LDFLAGS :=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
+LDFLAGS := -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
+else ifeq ($(BLAS),blis)
+CXXFLAGS += -DENABLE_BLAS -DENABLE_BLIS
+LDFLAGS := -L$(BLIS_PREFIX)/lib -lblis
 else ifeq ($(BLAS),)
 else
 $(error please use supported BLAS: openblas)

@@ -36,6 +36,9 @@ double gemm_test_generic(int num_procs, int my_id,
 
   // run for roughly 2s
   int loop = 2 / elapsed;
+  if (loop == 0) {
+    loop = 1;
+  }
   // make loop equal to all procs
   MPI_Bcast(&loop, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
