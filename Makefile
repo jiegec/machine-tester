@@ -12,6 +12,8 @@ else
 $(error please use supported BLAS: openblas)
 endif
 
+CONFIG_FILE := .config_$(BLAS)
+
 .PHONY: all clean
 
 all: machine_tester memory_latency
@@ -19,8 +21,12 @@ all: machine_tester memory_latency
 machine_tester: main.o latency.o stats.o bandwidth.o alltoall.o alltoallv.o cpu.o gemm.o
 	$(MPICXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
-%.o: %.cpp
-	$(MPICXX) $(CXXFLAGS) -c $^ -o $@
+$(CONFIG_FILE):
+	rm -rf .config_*
+	touch $@
+
+%.o: %.cpp $(CONFIG_FILE)
+	$(MPICXX) $(CXXFLAGS) -c $< -o $@
 
 memory_latency: memory_latency.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@
