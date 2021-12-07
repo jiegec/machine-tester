@@ -84,7 +84,10 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  printf("Available tests: latency, bandwidth, alltoall, alltoallv, cpu, gemm\n");
+  if (my_id == 0) {
+    printf("Available tests: latency, bandwidth, alltoall, alltoallv, cpu, "
+           "gemm\n");
+  }
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "latency") == 0) {

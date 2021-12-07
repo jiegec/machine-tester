@@ -1,6 +1,6 @@
 CXX := g++
 MPICXX := mpicxx
-CXXFLAGS := --std=c++17 -O3
+CXXFLAGS := --std=c++17 -O3 -fopenmp
 ifeq ($(BLAS), openblas)
 	CXXFLAGS += -DENABLE_BLAS
 	LDFLAGS := $(shell pkg-config --libs openblas)

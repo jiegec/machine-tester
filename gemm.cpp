@@ -1,5 +1,7 @@
 #include <cstdio>
 #include <mpi.h>
+#include <omp.h>
+
 extern "C" void dgemm_(const char *, const char *, int *, int *, int *,
                        double *, double *, int *, double *, int *, double *,
                        double *, int *);
@@ -15,6 +17,9 @@ void gemm_test(int num_procs, int my_id) {
   double beta = 1.0;
 
   int loop = 4;
+  if (my_id == 0) {
+    printf("Num Threads Per Process: %d\n", omp_get_max_threads());
+  }
 
   // warmup
   dgemm_("N", "N", &n, &n, &n, &alpha, a, &n, b, &n, &beta, c, &n);
