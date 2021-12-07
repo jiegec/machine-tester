@@ -27,7 +27,9 @@ void gemm_test(int num_procs, int my_id) {
   MPI_Barrier(MPI_COMM_WORLD);
   double elapsed = MPI_Wtime() - start;
 
-  printf("DGEMM Perf: %lf GF/s\n", gflops * loop / elapsed);
+  if (my_id == 0) {
+    printf("DGEMM Perf: %lf GF/s\n", gflops * loop * num_procs / elapsed);
+  }
 #else
   printf("BLAS is not linked. Make with BLAS=library\n");
 #endif
