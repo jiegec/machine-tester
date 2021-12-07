@@ -2,11 +2,11 @@
 #include <mpi.h>
 #include <omp.h>
 
+#ifdef ENABLE_BLAS
 extern "C" void dgemm_(const char *, const char *, int *, int *, int *,
                        double *, double *, int *, double *, int *, double *,
                        double *, int *);
 void gemm_test(int num_procs, int my_id) {
-#ifdef ENABLE_BLAS
   int n = 4096;
   double gflops = 2 * (double)n * n * n / 1000000000;
   double *a = new double[n * n];
@@ -35,8 +35,13 @@ void gemm_test(int num_procs, int my_id) {
   if (my_id == 0) {
     printf("DGEMM Perf: %lf GF/s\n", gflops * loop * num_procs / elapsed);
   }
-#else
-  printf("BLAS is not linked. Make with BLAS=library\n");
-#endif
   return;
 }
+
+#else
+
+void gemm_test(int num_procs, int my_id) {
+  printf("BLAS is not linked. Run make with BLAS=library\n");
+}
+
+#endif

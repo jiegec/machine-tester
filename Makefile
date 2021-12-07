@@ -2,11 +2,12 @@ CXX := g++
 MPICXX := mpicxx
 CXXFLAGS := --std=c++17 -O3 -fopenmp
 ifeq ($(BLAS), openblas)
-	CXXFLAGS += -DENABLE_BLAS
-	LDFLAGS := $(shell pkg-config --libs openblas)
-else ifeq ($(BLAS), mkl)
-	CXXFLAGS += -DENABLE_BLAS
+CXXFLAGS += -DENABLE_BLAS
+LDFLAGS := $(shell pkg-config --libs openblas)
+else ifeq ($(BLAS),)
+
 else
+$(error please use supported BLAS: openblas)
 endif
 
 .PHONY: all clean
