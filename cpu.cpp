@@ -71,6 +71,7 @@ void cpu_test(int num_procs, int my_id) {
   std::map<std::string, double> peak_dp;
   // core * freq * flop/cycle
   peak_dp["Intel(R) Xeon(R) CPU E5-2699 v4 @ 2.20GHz"] = 22 * 2.2 * 16;
+  peak_dp["Intel(R) Xeon(R) CPU E5-2670 v3 @ 2.30GHz"] = 12 * 2.3 * 16;
 
   auto it = peak_dp.find(model);
   if (it != peak_dp.end()) {
