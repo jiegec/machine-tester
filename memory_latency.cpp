@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
     {
         long size = sysconf(keys[i]);
         if (size != -1) {
-            printf("%s cache: %d bytes\n", names[i], size);
+            printf("%s cache: %ld bytes\n", names[i], size);
         }
     }
 
