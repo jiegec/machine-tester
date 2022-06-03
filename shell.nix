@@ -6,5 +6,6 @@ pkgs.mkShell {
     pkgs.cmake
     pkgs.openmpi
     pkgs.openblas
+    pkgs.blis
   ];
 }

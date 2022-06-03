@@ -1,5 +1,19 @@
 # Machine Tester
 
+
+Build:
+
+```shell
+$ mkdir -p build
+$ cd build
+# Find BLAS automatically
+$ cmake ..
+# Use OpenBLAS
+$ cmake .. -DBLA_VENDOR=OpenBLAS
+# Use BLIS
+$ cmake .. -DBLA_VENDOR=FLAME
+```
+
 Usage:
 
 ```shell
